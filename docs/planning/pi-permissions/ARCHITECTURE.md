@@ -8,7 +8,7 @@ Provide minimal-friction human authorization for trusted MCP mutations from Pi 1
 
 ## Architecture decision
 
-**One-way authority:** MCP creates authoritative per-call intents from actual tool arguments; Pi owns and matches scoped user approvals; MCP never caches multi-call grants. A Pi grant is a client policy, not a token granting extra server capability. On every approved/reused call the MCP server still performs its own policy checks, makes a nested elicitation request, checks a fresh reply, and only then calls GitLab.
+**One-way authority:** MCP creates authoritative per-call intents from actual tool arguments; Pi owns and matches scoped user approvals; MCP never caches multi-call grants. A Pi grant is a client policy, not a token granting extra server capability. On every approved/reused call the MCP server still performs its own policy checks, makes a nested elicitation request, checks a fresh reply associated with the currently pending nested request, and only then calls GitLab.
 
 ~~~mermaid
 flowchart LR
@@ -81,7 +81,7 @@ Clarification: "session" means **Pi session** (including resume), not network co
 2. GitLab server validates server policy and actor/project identity, normalizes effects and submits nested elicitation (standard form + versioned intent in `_meta`).
 3. Adapter routes to claimed permission hook with verified origin and correlation. Plugin compares request fingerprint/intent to **pending actual call**. Mismatch => ordinary human form or deny, never automatic.
 4. Pi UI displays exact operation, server/instance, actor, project, target resource, preview and allowed scopes. Human selects deny/once/tool-session/resource-session.
-5. Plugin returns one-shot accept to MCP; server validates schema, origin request and timely nonce; dispatches GitLab mutation.
+5. Plugin returns one-shot accept to MCP; server validates the schema, the reply association with its still-pending nested request, and the abort state; dispatches GitLab mutation. The nonce is used by the client for correlation, not as a magic proof in the form answer.
 6. Adapter receives final outcome. If confirmed successful, matching session grant selection is atomically persisted; otherwise no grant. Missing persistence confirmation MUST NOT leave an active in-memory grant.
 
 ### F2 — Grant reuse
