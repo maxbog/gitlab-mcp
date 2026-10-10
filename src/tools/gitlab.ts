@@ -52,7 +52,7 @@ import {
   type ToolCapability
 } from "../lib/tool-capabilities.js";
 import { annotationsForCapabilities } from "../lib/tool-annotations.js";
-import { requestToolApproval, ToolApprovalError } from "../lib/elicitation.js";
+import { ApprovalManager, ToolApprovalError } from "../lib/elicitation.js";
 import {
   GITLAB_TOOLSETS,
   isToolEnabledByToolsets,
@@ -293,6 +293,8 @@ function isExplicitlyEnabled(definition: GitLabToolDefinition, context: AppConte
 }
 
 export function registerGitLabTools(server: McpServer, context: AppContext): void {
+  // One manager per MCP server/session; never share approvals between clients.
+  const approvals = new ApprovalManager();
   const definitions = getGitLabToolDefinitions();
   const scopeFilteredDefinitions = definitions.filter(
     (definition) =>
@@ -344,10 +346,19 @@ export function registerGitLabTools(server: McpServer, context: AppContext): voi
 
           const args = sanitizeToolArguments(definition.name, (rawArgs ?? {}) as ToolArgs);
           assertToolCanExecuteInProjectScope(definition, args, context);
-          if (context.policy.requiresApproval(definition)) {
-            await requestToolApproval(server, definition, args, extra.requestId);
-          }
-          const result = redactSuccessfulResponse(await definition.handler(args, context));
+          const pendingGrant = context.policy.requiresApproval(definition)
+            ? await approvals.authorize(
+                server,
+                definition,
+                args,
+                extra.requestId,
+                context.env.GITLAB_ALLOWED_PROJECT_IDS
+              )
+            : undefined;
+          const rawResult = await definition.handler(args, context);
+          // Only remember sticky consent if the underlying GitLab mutation succeeds.
+          approvals.remember(pendingGrant);
+          const result = redactSuccessfulResponse(rawResult);
           const pagination = getPaginationMetadata(result);
           const formatted = context.formatter.format(result);
           const structuredResult = formatted.truncated

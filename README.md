@@ -357,29 +357,62 @@ See [docs/tools.md](docs/tools.md) for usage details and
 
 ## Policy & Security
 
-### Interactive write approval (MCP elicitation)
+### Interactive and session-scoped write approval (MCP elicitation)
 
-Set `GITLAB_PERMISSION_MODE=ask` to allow reads without prompting and require
-**MCP form elicitation** for every tool with `write`, `delete`, or `admin`
-capabilities. The client must explicitly accept the prompt and set the
-`confirm` checkbox to `true`. Rejected, cancelled, malformed, unsupported,
-and failed elicitation requests deny execution. Approval is per tool call and
-is not cached.
+Set `GITLAB_PERMISSION_MODE=ask` to allow reads without prompting. Every tool with
+`write`, `delete`, or `admin` capabilities requires an MCP **form elicitation**
+confirmation. A client must explicitly accept the form and check the confirmation box;
+declines, cancellations, invalid responses, or missing client support deny execution.
+Without a sticky grant, approvals affect only the current call.
 
-This mode requires an MCP client that advertises **form elicitation** support.
-The stdio transport is the recommended starting point. Streamable HTTP needs a
-sessionful client and an active server-to-client response stream;
-stateless/JSON-only HTTP clients may not support server-initiated requests and
-will fail closed.
+#### Scope options
 
-**Security boundary:** `ask` is an MCP-level guard, not credential isolation.
-Keep the write-capable PAT outside the agent's sandbox and never allow the agent
-to execute code inside the MCP server process or read its environment. A client
-that automatically accepts elicitation requests is not a trusted approval UI.
-Combine this with GitLab protected branches, restricted PAT scopes, and
-`GITLAB_ALLOWED_PROJECT_IDS` where possible. Also note that approval messages
-show identifiers rather than full mutation payloads; review tool arguments
-before approving.
+For allowlisted, narrowly classified operations the approval form offers:
+
+| Option             | Meaning                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `once`             | Only the current tool invocation                                                                            |
+| `tool_session`     | Same operation, project and resource **via the same tool** until the current MCP connection ends            |
+| `resource_session` | Same operation, project and branch/MR across equivalent allowed tools until the current MCP connection ends |
+
+For file updates, a branch-scoped approval covers **create/update only** on that exact
+branch and project, not deleting/moving/chmod, force push, or branch creation.
+**No filenames are hardcoded as safe or unsafe.** Consent to file modifications on
+the selected branch includes CI definitions, configuration files, CODEOWNERS,
+`.env` files, and any other file on that branch. Main/default/protected branches
+are not automatically exempted: use GitLab branch protection and stricter project
+policies if you want additional controls. Paths must be unambiguous repository
+paths (no absolute/traversal paths); GitLab remains responsible for validating
+repository contents. File contents are not shown in the elicitation form, so
+review complete tool-call arguments before granting session consent.
+
+For merge requests, `mr.note.add` includes top-level notes and standard discussion
+notes (including equivalent `gitlab_create_note` calls); `mr.metadata.edit`
+covers only title and description. Closing, merging, changing target branches, approving
+MRs and deleting notes **always require individual approval**.
+
+For issues, `issue.create` may receive a project-and-tool-scoped approval;
+`issue.note.add` and `issue.metadata.edit` are limited to a particular issue.
+Unknown operations, administrative tools, GraphQL mutations and destructive tools
+always offer `once` only. Existing allowlists, capability restrictions and project
+filters still apply before any approval is requested.
+
+Grants are created **only after the first GitLab operation succeeds**. There is
+**no time-based expiry**: a grant lasts until the **MCP connection ends** and is
+held solely in that server's memory. In Pi's built-in MCP integration, the
+`session_shutdown` hook closes its MCP connections, so grants end with that Pi
+agent session. In clients that reuse a connection across agent sessions, the
+grant lasts for the connection instead; ensure the client disconnects or
+reconnects when starting a new task. No grants survive process restart or cross
+independent client connections. Persistent `always allow` approvals are
+deliberately **not implemented** here.
+
+**Security boundary:** `ask` is an MCP-level guard, **not credential isolation**.
+The write-capable PAT must be kept outside the coding agent's sandbox. A client that
+automatically accepts elicitation responses defeats human approval. This needs an MCP
+client that advertises **form elicitation** support: unsupported clients fail closed.
+Stateful transports are preferred; stateless/JSON-only HTTP may not support
+server-initiated requests.
 
 The policy engine controls which tools are available at registration time:
 

@@ -7,14 +7,10 @@ import { createMcpServer } from "../../src/server/build-server.js";
 import { buildContext } from "./_helpers.js";
 
 type ApprovalReply =
-  | { action: "accept"; content: { confirm: boolean } }
+  | { action: "accept"; content: { confirm: boolean; approval: string } }
   | { action: "decline" | "cancel" };
 
-async function setup(
-  mode: "ask" | "full",
-  reply?: ApprovalReply,
-  advertiseElicitation = true
-) {
+async function setup(mode: "ask" | "full", reply?: ApprovalReply, advertiseElicitation = true) {
   const createIssue = vi.fn().mockResolvedValue({ id: 10, iid: 1 });
   const deleteIssue = vi.fn().mockResolvedValue({ success: true });
   const getProject = vi.fn().mockResolvedValue({ id: 12, name: "demo" });
@@ -82,7 +78,10 @@ describe("MCP write approval (ask mode)", () => {
   });
 
   it("elicits consent for writes and executes only after explicit confirmation", async () => {
-    const pair = await setup("ask", { action: "accept", content: { confirm: true } });
+    const pair = await setup("ask", {
+      action: "accept",
+      content: { confirm: true, approval: "Allow this call once" }
+    });
     try {
       const response = await pair.client.callTool(issueCall);
       expect(response.isError).toBeFalsy();
@@ -99,7 +98,10 @@ describe("MCP write approval (ask mode)", () => {
   for (const [description, reply] of [
     ["decline", { action: "decline" }],
     ["cancel", { action: "cancel" }],
-    ["unchecked confirmation", { action: "accept", content: { confirm: false } }]
+    [
+      "unchecked confirmation",
+      { action: "accept", content: { confirm: false, approval: "Allow this call once" } }
+    ]
   ] as const) {
     it(`blocks writes on ${description}`, async () => {
       const pair = await setup("ask", reply);
