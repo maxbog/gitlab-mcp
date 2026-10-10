@@ -58,6 +58,26 @@ describe("ToolPolicyEngine", () => {
       ).toEqual([tool("read", ["read"]), tool("write", ["write"]), tool("admin", ["admin"])]);
     });
 
+    it("exposes mutation tools in ask mode without bypassing existing restrictions", () => {
+      const engine = new ToolPolicyEngine({
+        permissionMode: "ask",
+        disabledCapabilities: ["delete"],
+        allowedTools: [],
+        enabledFeatures: defaultFeatures
+      });
+
+      const read = tool("read", ["read"]);
+      const write = tool("write", ["write"]);
+      const admin = tool("admin", ["admin"]);
+      const deletion = tool("delete", ["delete"]);
+
+      expect(engine.filterTools([read, write, admin, deletion])).toEqual([read, write, admin]);
+      expect(engine.requiresApproval(read)).toBe(false);
+      expect(engine.requiresApproval(write)).toBe(true);
+      expect(engine.requiresApproval(admin)).toBe(true);
+      expect(engine.requiresApproval(deletion)).toBe(true);
+    });
+
     it("allows all tools when no restrictions are set", () => {
       const engine = new ToolPolicyEngine({
         readOnlyMode: false,
