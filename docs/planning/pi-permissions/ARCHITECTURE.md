@@ -48,8 +48,8 @@ flowchart LR
 - List / inspect / revoke grants. Default deny in headless/noninteractive mode; optional preconfiguration of narrowly whitelisted automation is a separate post-MVP decision.
 
 **Pi session store:**
-- Append immutable event records `pi-permissions/grant-v1` and `pi-permissions/revoke-v1`; fold lineage from `ctx.sessionManager.getBranch()`; bind to the stable Pi session ID. Do not modify adapter private `mcp-approval-v1` records.
-- Resuming the SAME session should restore approvals; a NEW or FORKED session should not inherit them by default. Tree navigation restores only entries in the selected lineage. Revocation on a sibling branch does not rewrite previous history; UI must surface this and optionally support session-global revocation through an independently secured store, deferred beyond MVP.
+- Append immutable event records `pi-permissions/grant-v1` and `pi-permissions/revoke-v1`; fold grants from lineage returned by `ctx.sessionManager.getBranch()` and **global revocation tombstones** from all records returned by `ctx.sessionManager.getEntries()`; bind to stable Pi session ID. Do not modify adapter private `mcp-approval-v1` records.
+- Resuming the SAME session should restore approvals; a NEW or FORKED session should not inherit them by default. Tree navigation restores only entries in the selected lineage. Revocation is monotonic for the entire session: scan all session entries for revoke tombstones regardless of the currently selected tree branch, so a sibling switch never resurrects a revoked grant.
 
 **Agent sandbox and PAT custody:**
 - Pi host and broker outside sandbox; model tool bash runs inside sandbox and cannot read session JSONL / env credentials / Pi MCP connection transport/socket / API token. GitLab PAT only in MCP process or protected OS credential provider. Strong GitLab least privilege/protected branches remain independent defenses.
