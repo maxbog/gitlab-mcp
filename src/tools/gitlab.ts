@@ -52,6 +52,7 @@ import {
   type ToolCapability
 } from "../lib/tool-capabilities.js";
 import { annotationsForCapabilities } from "../lib/tool-annotations.js";
+import { requestToolApproval, ToolApprovalError } from "../lib/elicitation.js";
 import {
   GITLAB_TOOLSETS,
   isToolEnabledByToolsets,
@@ -329,7 +330,7 @@ export function registerGitLabTools(server: McpServer, context: AppContext): voi
         inputSchema: definition.inputSchema ?? {},
         annotations: annotationsForCapabilities(definition.capabilities)
       },
-      async (rawArgs) => {
+      async (rawArgs, extra) => {
         try {
           context.policy.assertCanExecute({
             name: definition.name,
@@ -343,6 +344,9 @@ export function registerGitLabTools(server: McpServer, context: AppContext): voi
 
           const args = sanitizeToolArguments(definition.name, (rawArgs ?? {}) as ToolArgs);
           assertToolCanExecuteInProjectScope(definition, args, context);
+          if (context.policy.requiresApproval(definition)) {
+            await requestToolApproval(server, definition, args, extra.requestId);
+          }
           const result = redactSuccessfulResponse(await definition.handler(args, context));
           const pagination = getPaginationMetadata(result);
           const formatted = context.formatter.format(result);
@@ -367,6 +371,12 @@ export function registerGitLabTools(server: McpServer, context: AppContext): voi
             }
           };
         } catch (error) {
+          if (error instanceof ToolApprovalError) {
+            return {
+              isError: true,
+              content: [{ type: "text", text: error.message }]
+            };
+          }
           return toToolError(error, context, {
             extraKeys: definition.sensitiveArguments,
             extraValues: getSensitiveArgumentValues(rawArgs, definition.sensitiveArguments)
