@@ -50,7 +50,7 @@ Store **no PAT, request bodies, prompt text, entire arguments, GitLab file conte
 
 1. On session startup/resume, `session_tree` navigation or session switch: increment local generation, invalidate pending human confirmations and in-flight reuse decisions.
 2. Obtain `sessionId` and `getBranch()` **from the same bound session context**; if mismatch/error, disable automatic reuse.
-3. Validate custom entry type, version, exact shape, sessionId and key components. Fold grants and revocations in parent-to-leaf order. Revoke only the grants in that lineage. Unknown/future versions must not grant permission.
+3. Validate custom entry type, version, exact shape, sessionId and key components. Fold grant entries in parent-to-leaf order. Independently collect valid revoke tombstones by grantId from **all** session entries via `ctx.sessionManager.getEntries()`. Filter grants by this global, monotonic revoke set. Unknown/future versions must not grant permission.
 4. Re-evaluate configured server fingerprint, live actor, GitLab instance and policyRevision before matching. Recompute state rather than trusting serialized `cachedAllowed` flags.
 5. Treat a fork with a new sessionId as **no inherited grants**, even if copied custom entries occur in the fork's history. Within one session's tree, grants persist only on descended branches, not siblings without that ancestor.
 
@@ -64,7 +64,7 @@ After a successful (isError false, non-aborted, known final) linked GitLab opera
 
 `/permissions list`: display safe summaries, source and allowed operation; `/permissions revoke <grant-id>`: append revoke event, immediately invalidate pending and active cache; `/permissions clear`: revoke all grants in active session lineage. Require a human command, not a model-facing tool that can silently revoke or approve. Revocation cannot undo a mutation already dispatched; race semantics should be reported.
 
-**Pi conversation tree caveat:** revocation appended on one sibling path does not automatically revoke grants on another sibling path. Default MVP revocation is branch-lineage local, with UI warning. If a guarantee of session-wide revocation across all historical branches is mandatory, create a distinct host-owned epoch/revocation ledger outside the tree in a separate ticket, storing only revoke tombstones and ensuring it is read on every match. Do not claim session-wide revocation without this mechanism.
+**Pi conversation-tree behavior:** grant visibility follows the active path, but revocations are monotonic across the complete session file. A valid revoke tombstone is collected from `getEntries()` irrespective of ancestry. Therefore a revoked grant cannot reappear after switching sibling branches; reloading the same session re-reads tombstones. Test whether getEntries() includes all file entries in the installed Pi release. If it does not, block release and design an independent secure revocation ledger.
 
 ## Expiration
 
