@@ -48,7 +48,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "fetch-cookie": "^3.2.0",
@@ -58,7 +58,7 @@
     "pino": "^10.3.1",
     "pkce-challenge": "^6.0.0",
     "tough-cookie": "^6.0.0",
-    "undici": "^7.28.0",
+    "undici": "^7.29.1",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
@@ -89,15 +89,17 @@
   },
   "pnpm": {
     "overrides": {
-      "@modelcontextprotocol/sdk>@hono/node-server": "1.19.13",
+      "@modelcontextprotocol/sdk>@hono/node-server": "1.19.15",
       "@modelcontextprotocol/sdk>ajv": "8.18.0",
       "@modelcontextprotocol/sdk>express-rate-limit": "8.2.2",
-      "@modelcontextprotocol/sdk>hono": "4.12.25",
-      "ajv>fast-uri": "3.1.2",
-      "body-parser>qs": "6.15.2",
-      "express-rate-limit>ip-address": "10.1.1",
-      "express>qs": "6.15.2",
-      "router>path-to-regexp": "8.4.0"
+      "@modelcontextprotocol/sdk>hono": "4.13.7",
+      "ajv>fast-uri": "3.1.8",
+      "body-parser>qs": "6.16.0",
+      "express-rate-limit>ip-address": "10.7.1",
+      "express>qs": "6.16.0",
+      "router>path-to-regexp": "8.4.0",
+      "express>proxy-addr": "2.0.8",
+      "express>body-parser": "2.3.0"
     }
   },
   "config": {

@@ -55,7 +55,7 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - name: Test approval protocol and permission policy
-        run: pnpm exec vitest run tests/integration/elicitation.integration.test.ts tests/policy.test.ts
+        run: pnpm exec vitest run tests/integration/elicitation.integration.test.ts tests/integration/sticky-approvals.integration.test.ts tests/approval-manager.test.ts tests/policy.test.ts
         env:
           CI: true
 
