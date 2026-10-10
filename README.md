@@ -11,7 +11,7 @@ A production-ready [MCP](https://modelcontextprotocol.io/) server for GitLab. It
 - **Comprehensive GitLab coverage** — projects, merge requests (with code-context analysis), issues, pipelines, wikis, milestones, releases, labels, commits, branches, GraphQL, and file management
 - **Multiple transports** — stdio for local CLI usage, Streamable HTTP for remote deployments, optional SSE
 - **Flexible authentication** — personal access tokens, OAuth 2.0 PKCE, external token scripts, token files, cookie-based auth, and per-request remote authorization
-- **Policy engine** — readonly/modify/full modes, tool allowlist/denylist, feature toggles, and project-scoped restrictions
+- **Policy engine** — readonly/modify/full/ask modes, tool allowlist/denylist, feature toggles, and project-scoped restrictions
 - **Enterprise networking** — HTTP/HTTPS proxy, custom CA certificates, Cloudflare bypass, multi-instance API rotation
 - **Output control** — JSON, compact JSON, or YAML formatting with configurable response size limits
 
@@ -357,6 +357,30 @@ See [docs/tools.md](docs/tools.md) for usage details and
 
 ## Policy & Security
 
+### Interactive write approval (MCP elicitation)
+
+Set `GITLAB_PERMISSION_MODE=ask` to allow reads without prompting and require
+**MCP form elicitation** for every tool with `write`, `delete`, or `admin`
+capabilities. The client must explicitly accept the prompt and set the
+`confirm` checkbox to `true`. Rejected, cancelled, malformed, unsupported,
+and failed elicitation requests deny execution. Approval is per tool call and
+is not cached.
+
+This mode requires an MCP client that advertises **form elicitation** support.
+The stdio transport is the recommended starting point. Streamable HTTP needs a
+sessionful client and an active server-to-client response stream;
+stateless/JSON-only HTTP clients may not support server-initiated requests and
+will fail closed.
+
+**Security boundary:** `ask` is an MCP-level guard, not credential isolation.
+Keep the write-capable PAT outside the agent's sandbox and never allow the agent
+to execute code inside the MCP server process or read its environment. A client
+that automatically accepts elicitation requests is not a trusted approval UI.
+Combine this with GitLab protected branches, restricted PAT scopes, and
+`GITLAB_ALLOWED_PROJECT_IDS` where possible. Also note that approval messages
+show identifiers rather than full mutation payloads; review tool arguments
+before approving.
+
 The policy engine controls which tools are available at registration time:
 
 ```bash
@@ -365,6 +389,9 @@ GITLAB_PERMISSION_MODE=readonly
 
 # Modify mode — allows read/write/admin, but hides delete-capability tools
 GITLAB_PERMISSION_MODE=modify
+
+# Ask mode — read automatically, request MCP form confirmation before all write/delete/admin tools
+GITLAB_PERMISSION_MODE=ask
 
 # Deprecated legacy kill switch; true takes precedence and forces readonly
 GITLAB_READ_ONLY_MODE=true
