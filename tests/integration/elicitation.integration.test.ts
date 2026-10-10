@@ -16,11 +16,13 @@ async function setup(
   advertiseElicitation = true
 ) {
   const createIssue = vi.fn().mockResolvedValue({ id: 10, iid: 1 });
+  const deleteIssue = vi.fn().mockResolvedValue({ success: true });
   const getProject = vi.fn().mockResolvedValue({ id: 12, name: "demo" });
   const context = buildContext({
     permissionMode: mode,
     gitlabStub: {
       createIssue: createIssue as never,
+      deleteIssue: deleteIssue as never,
       getProject: getProject as never
     }
   });
@@ -48,6 +50,7 @@ async function setup(
   return {
     client,
     createIssue,
+    deleteIssue,
     getProject,
     prompts,
     async close() {
@@ -117,6 +120,32 @@ describe("MCP write approval (ask mode)", () => {
       expect(response.isError).toBe(true);
       expect(pair.createIssue).not.toHaveBeenCalled();
       expect(pair.prompts).toHaveLength(0);
+    } finally {
+      await pair.close();
+    }
+  });
+
+  it("requires explicit confirmation for delete-capability tools too", async () => {
+    const pair = await setup("ask", { action: "decline" });
+    try {
+      const result = await pair.client.callTool({
+        name: "gitlab_delete_issue",
+        arguments: { project_id: "group/demo", issue_iid: "1" }
+      });
+      expect(result.isError).toBe(true);
+      expect(pair.deleteIssue).not.toHaveBeenCalled();
+      expect(pair.prompts[0]).toContain("GitLab delete operation");
+    } finally {
+      await pair.close();
+    }
+  });
+
+  it("fails closed if the elicitation handler fails", async () => {
+    const pair = await setup("ask");
+    try {
+      const result = await pair.client.callTool(issueCall);
+      expect(result.isError).toBe(true);
+      expect(pair.createIssue).not.toHaveBeenCalled();
     } finally {
       await pair.close();
     }
