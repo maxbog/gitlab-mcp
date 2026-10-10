@@ -12,7 +12,8 @@ Pi owns user grants and their lifecycle; MCP servers own and enforce the semanti
 - [CONTRACT.md](CONTRACT.md): versioned authorization intent and normalization.
 - [STORAGE.md](STORAGE.md): Pi session-tree grants, revocation, invariants.
 - [SECURITY.md](SECURITY.md): security model and adversarial cases.
-- [BACKLOG.md](BACKLOG.md): implementation epics and individually testable tickets.
+- [BACKLOG.md](BACKLOG.md): **33 implementation tickets in 7 epics**, each with a unique prospective agent, dependencies, design and acceptance tests.
+- [DECISIONS.md](DECISIONS.md): accepted decisions, research assumptions and current blockers.
 - [AGENT-COORDINATION.md](AGENT-COORDINATION.md): agent briefs, collaboration, conflict arbitration, completion checks.
 - [TEST-PLAN.md](TEST-PLAN.md): contract, behavioral, and integration test scenarios.
 - [research/pi.md](research/pi.md), [research/adapter.md](research/adapter.md), [research/gitlab.md](research/gitlab.md), [research/mcp.md](research/mcp.md): source-based findings and uncertainties.
