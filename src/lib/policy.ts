@@ -47,6 +47,13 @@ export class ToolPolicyEngine {
     }
   }
 
+  requiresApproval(tool: ToolPolicyMeta): boolean {
+    return (
+      this.permissionMode === "ask" &&
+      tool.capabilities.some((capability) => ["write", "delete", "admin"].includes(capability))
+    );
+  }
+
   isToolEnabled(tool: ToolPolicyMeta): boolean {
     if (this.hasBlockedCapabilities(tool)) {
       return false;
